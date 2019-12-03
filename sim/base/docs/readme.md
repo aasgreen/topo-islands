@@ -39,16 +39,14 @@ This should also launch you into a docker container under the directory /work, w
 
 The workhorse of this simulation is the program lg.f90, which will setup a grid of spins, and put a hard circularly boundary somewhere in the middle of it. It will then evolve the program using a first-order discretized ODE solver (the euler method), which steps the system through it's equations of motion. You will need to pass the following parameters:
 
-------------------------
 Parameters| Description|
-------------------------
+------|------------------|
 elastic constant (k) | The interaction energy between neighboring spins[1]|
 temperature (beta) | This actually sets the inverse temperature 1/T of the system |
 external field (mu) | If you want to apply an external field that acts to globally align the spins, you can do that here |
 gridSize | The length of the grid |
 endTime | The length of time you want the simulation to evolve for |
 seed    | For some operating systems (not unix based), fortran needs an external seed to start it's number generator, so you can provide one here. If you are running this in docker, it won't be used|
-----------------------------------------------------------------------
 
 To use the program, first compile it with gfortran:
 
