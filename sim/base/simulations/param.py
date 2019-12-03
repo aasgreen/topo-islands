@@ -1,0 +1,17 @@
+import numpy as np
+import random
+#arguments go like g, beta, N, endT
+
+numRuns = 1
+kappaL = [i for i in np.linspace(1,1,1)]
+betaL = [i for i in np.linspace(2,2,1)]
+seed = [int(random.randint(0,32000)) for i in np.arange(numRuns)]
+mu = 0
+gridSize =200
+endTime = 1000
+
+params = np.array([(k,beta,mu, gridSize,endTime,s) for k in kappaL for beta in betaL for s in seed])
+
+np.savetxt('params.txt',params,delimiter=' ',fmt=['%03.2f','%04.3f','%04.3f','%d','%d','%d'])
+
+
