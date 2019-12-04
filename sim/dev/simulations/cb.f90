@@ -126,7 +126,9 @@ do t=1,int(endT)
     write(fileNames,'(A3,F0.4, A4)') 'out', t*delTime,'.dat'
     write(dfileNames,'(A6,F0.4, A4)') 'defect', t*delTime,'.dat'
 
-    !if (logSpace(t) .eq. 1) then
+    if (logSpace(t) .eq. 1) then
+        print *, trim(fileNames)
+    end if
     if (1 .eq. 1) then !this is not log time, so we need all time steps
        !print *, trim(fileNames)
 
