@@ -9,7 +9,7 @@ integer, dimension(100) :: tPoints
 integer, allocatable, dimension(:) :: logTPoints
 real(8), allocatable, dimension(:,:) :: grid,dgrid,gridPlusDelta
 real(8) :: x,kappa,windingN,lNoise
-real(8),parameter :: PI = 4*atan(1.0_8),  delTime=0.1
+real(8),parameter :: PI = 4*atan(1.0_8),  delTime=0.5
 integer, allocatable :: seed(:)
 character(40) :: fileNames
 character(40) :: dfileNames
@@ -89,7 +89,7 @@ enddo
 !calculate the indices where the boundary exists. These indicies will meet the
 !equation i^2+j^2 = R^2, where R is the radius of the circle. We will take some 
 !delta, so (R-del)^2 .ge. i^2+j^2 .ge. (R)^2
-islandR =6
+islandR =4
 deltaR = 3
 
 !Allocate mu vector
@@ -98,7 +98,7 @@ muVector = 10*kappa
 muVector(1:10)=0
 !muVector(int(endT/20/delTime):int(endT/delTime)) = (/ (mu+kappa*i/(endT/delTime-2)*100/2, i= 0,int((endT/delTime-1)/2)) /)
 muVector(int(endT/20/delTime):int(endT/delTime)) = 10*kappa
-write(*,*) muVector
+!write(*,*) muVector
 
 
 
@@ -106,6 +106,7 @@ write(*,*) 'max T', measuredT-zeroE
 
 !open temperature V time file
 open(61,file='tVT.dat',status = 'unknown', position='append')
+open(66,file='radius.dat',status = 'unknown', position='append')
 
 !initialize defect grid
 allocate(dgrid(N,N))
@@ -140,7 +141,7 @@ do t=1,int(endT)
 
         do i=1,N
             do j=1,N
-            write(1,'(F10.5)',advance="no") grid(i,j)
+            write(1,'(F10.5)',advance="no") ACOS(COS(grid(i,j)))
             measuredT = (hamXY(i,j,grid(i,j),kappa,mu))/N/N+measuredT
             windingN=(windN(grid(i,modulo(j-2,N)+1)-grid(i,j)))+&
                 &(windN(grid(modulo(i,N)+1,modulo(j-2,N)+1)-grid(i,modulo(j-2,N)+1)))+&
@@ -160,6 +161,7 @@ do t=1,int(endT)
         enddo
         measuredT = (measuredT-zeroE)
         write(61,'(F12.2,A, F10.5)') t*delTime,',', measuredT, meanK
+        write(66,*) islandR
         !write(*,*) t*delTime
 
         close(1)
@@ -169,6 +171,7 @@ do t=1,int(endT)
 end do
 write(*,*) dVar/dCount/2
 close(61)
+close(66)
 !Write to File
 write(*,*) 'finished langin'
 
@@ -181,9 +184,9 @@ contains
         real(8) :: islandR
         ! case 2: grow, hit 50 and then shrink
         if (1.0*t/endT .lt. .5) then
-            islandR = islandR + 50./(endT/2-1)
+            islandR = islandR + 8./(endT/2-1)
         else
-            islandR = islandR - 50./(endT/2-1)
+            islandR = islandR - 8./(endT/2-1)
 
         end if
     end subroutine islandRadius
