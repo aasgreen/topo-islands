@@ -6,6 +6,7 @@ COPY requirements.txt requirements.txt
 RUN apt-get update && apt-get install -y \
     build-essential \
     gfortran \
+    libhdf5-dev \
     libblas-dev \
     liblapack-dev \
     libxft-dev \

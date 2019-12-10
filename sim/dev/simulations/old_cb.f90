@@ -10,7 +10,7 @@ integer, dimension(100) :: tPoints
 integer, allocatable, dimension(:) :: logTPoints
 real(8), allocatable, dimension(:,:) :: grid,dgrid,gridPlusDelta
 real(8) :: x,kappa,windingN,lNoise
-real(8),parameter :: PI = 4*atan(1.0_8),  delTime=0.1
+real(8),parameter :: PI = 4*atan(1.0_8),  delTime=0.5
 integer, allocatable :: seed(:)
 character(40) :: fileNames
 character(40) :: dfileNames
@@ -195,7 +195,7 @@ do t=1,int(endT)
         print *, trim(fileNames)
     end if
     if (1 .eq. 1) then !this is not log time, so we need all time steps
-        write(66,*) islandR
+        write(66,*) islandR, muVector(t)
        !print *, trim(fileNames)
 
 !        open(1,file=fileNames)

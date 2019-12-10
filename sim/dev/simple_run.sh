@@ -2,12 +2,12 @@
 mkdir dataFolder/
 cp simulations/* dataFolder/
 cd dataFolder
-gfortran -O3 -o defect.o cb.f90
-gfortran -O3 -o defectT.o aveDefect.f90
+gfortran -O3 -o defect.o cb.f90 -I/usr/include/hdf5/serial -L/usr/lib/x86_64-linux-gnu/hdf5/serial -lhdf5_fortran -lhdf5
 
+gfortran -O3 -o defectT.o aveDefect.f90
 #mkdir data
 #arguments g, beta, N, endT 
-python param.py #uncomment to have python generate list of parameters
+#python param.py #uncomment to have python generate list of parameters
 file="./params.txt"
 decross='0'
 runName=$(echo $(date +%Y%m%d_%H%M%S))

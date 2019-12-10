@@ -5,7 +5,7 @@ cp render/* dataFolder/
 cp utilities/* dataFolder/
 
 cd dataFolder
-gfortran -O3 -o defect.o cb.f90
+gfortran -O3 -o defect.o cb.f90 -I/usr/include/hdf5/serial -L/usr/lib/x86_64-linux-gnu/hdf5/serial -lhdf5_fortran -lhdf5
 gfortran -O3 -o defectT.o aveDefect.f90
 
 #mkdir data
