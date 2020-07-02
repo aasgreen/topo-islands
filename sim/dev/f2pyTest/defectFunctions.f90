@@ -1,4 +1,4 @@
-program islandC_np
+program sinGordon
     use hdf5 !use the hdf5 dataset
 implicit none
 !This program will create a linear region in the center where a non-polar force will be applied. 
@@ -302,6 +302,75 @@ write(*,*) 'finished langin'
 deallocate(grid)
 contains
 
+    subroutine initializeGrid(grid,n)
+        !initialize the grid of spins
+
+        !Args: 
+        !   grid: the input grid (already allocated
+        !   n: the size of the grid (assume square)
+
+        !Returns: 
+        !   The new grid, overwriting the old grid
+
+        real(8), dimension(n,n), intent(inout) :: grid
+        integer, intent(in) :: n
+
+        integer :: initScheme
+
+        initScheme = 1
+
+        select case (initScheme)
+        case DEFAULT
+            !===================================
+            ! create a grid of spins all pointing to the right
+
+            grid = 0
+
+        case (1)
+        !============================Case 1=======================
+        !Use the solution to the sinGordon equation (tahn) to create a 1D domain wall in the spin
+
+            do i = 1,n
+                do j = 1,n
+                    grid(i,j) = (tanh(i-n/2)-1)*pi/2
+
+                end do
+            end do
+        end select
+
+        end subroutine initGrid
+
+
+    function elastic(grid,n,kappa,alpha,i,j,mu,fieldphi)
+        !calculate the advanced elastic function as a landau like constant
+        ! k = 1-(grad phi)^2
+
+        !Args:
+        !   In:
+        !       grid: the grid of spins (at any state)
+        !       n: the size of the grid (assume square)
+        !       kappa: the ground state elastic constant
+        !       alpha: the landau parameter for the elastic constant
+        
+        !Returns:
+        !       elastic: the local elastic constant
+
+
+        integer, intent(in) :: n,i,
+        real(8), dimension(n,n), intent(in) :: grid
+        real(8), intent(in) :: kappa,alpha,mu,fieldphi
+        real(8), intent(out) :: elastic
+
+        real(8) :: local_grad
+        
+        elastic = 1-alpha*hamxy(i,j,grid(i,j), kappa, mu, fieldphi)
+
+    end function elastic
+        
+
+
+
+
     subroutine islandradius(islandr,t)
         !calculate the radius of the island at a given time
         integer :: t, islandScheme
@@ -368,6 +437,19 @@ contains
             sin((theta-fieldphi) ) 
     end function torque
 
+    function lanTorque(i,j,theta,kappa,mu,fieldphi)
+        integer :: i,j,ii,jj
+        real(8):: theta,torque,kappa,fieldphi
+        real(8) :: g,hamxy,mu
+        real(8), dimension(3) :: x,y
+        !write(*,*) 'hamxy', i,j
+        x =(/ grid(modulo(i-2,n)+1,j),theta,grid(modulo(i,n)+1,j)/)
+        y =(/ grid(i,modulo(j-2,n)+1),theta,grid(i,modulo(j,n)+1)/)
+        torque = elastic(grid,n,kappa,alpha,i,j,mu,fieldphi)*(sin(x(2)-x(1))+sin(x(2)-x(3))+sin(y(2)-y(1))+sin(y(2)-y(3)))+4*mu*cos( (theta-fieldphi))* &
+            sin((theta-fieldphi) ) 
+    end function lanTorque
+
+
     function xi(grid,beta,n)
         integer :: n
         real(8), dimension(n,n) :: grid
@@ -405,6 +487,10 @@ contains
         real(8) :: theta, thetap,x,dele,e1,e2,lnoise,fluce,u,force,fieldphi,mutemp
         integer :: n,ii,jj,i,j
         real(8), dimension(n,n) :: state,newstate,hgrid
+        
+        intent(in) state, lnoise, n
+        intent(out) newstate, hgrid
+
         do i=1,n
             do j=1,n
                 call random_number(x)
@@ -422,7 +508,7 @@ contains
                     fieldphi = 0
                 endif
 
-                theta = grid(ii,jj)
+                theta = state(ii,jj)
                 force = torque(ii,jj,theta,kappa,mutemp,fieldphi)
                 call random_number(fluce)
                 fluce = fluce-.5
@@ -498,4 +584,4 @@ function remove_dups(input)
      end do
      unique=pack([(kx,kx=1,100)],mask)
     end function unique
-end program islandC_np
+end program sinGordon

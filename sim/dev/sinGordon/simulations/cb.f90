@@ -1,45 +1,31 @@
-program islandC_np
+program langan
     use hdf5 !use the hdf5 dataset
 implicit none
-!This program will create a linear region in the center where a non-polar force will be applied. 
-!Then, we will watch as the dynamics evolve.
+
 character(100) :: buffer
 integer :: n = 200, endt=1001,seedn
 real(8) :: beta,mu,measuredt,zeroe, meank,avedelphi
 real(8), allocatable, dimension(:) :: muvector
 integer, dimension(100) :: tpoints
 integer, allocatable, dimension(:) :: logtpoints
-real(8), allocatable, dimension(:,:) :: grid,dgrid,gridplusdelta,agrid, hgrid
-real(8) :: x,kappa,windingn, lnoise
-real(8),parameter :: pi = 4*atan(1.0_8),  deltime=0.01
+real(8), allocatable, dimension(:,:) :: grid,dgrid,gridplusdelta
+real(8) :: x,kappa,windingn,lnoise
+real(8),parameter :: pi = 4*atan(1.0_8),  deltime=0.1
 integer, allocatable :: seed(:)
 character(40) :: filenames
-character(40) :: filenames_h
 character(40) :: dfilenames
 
 
-real(8) :: t1=1.2,t2=1.0,dt,dvar=0, islandr, deltar
-integer :: i,j,t,timeprint=1,tt,dcount=0,un=4,seedsize,istat=0, deltat
+real(8) :: t1=1.2,t2=1.0,dt,dvar=0,islandr
+integer :: i,j,t,timeprint=1,tt,dcount=0,un=4,seedsize,istat=0,deltar
 
 !hdf parameters
 
 character(len=8), parameter :: filename = "dsetf.h5" ! file name
-character(len=8), parameter :: hamfilename = 'hsetf.h5'
-character(len=10), parameter :: anchorName = 'anchor.dat'
 
 integer(hid_t) :: file_id       ! file identifier
 integer(hid_t) :: dset_id       ! dataset identifier
 integer(hid_t) :: dspace_id     ! dataspace identifier
-
-integer(hid_t) :: file_id_h   ! file identifier
-integer(hid_t) :: dset_id_h      ! dataset identifier
-integer(hid_t) :: dspace_id_h    ! dataspace identifier
-
-integer(hid_t) :: file_id_a   ! file identifier
-integer(hid_t) :: dset_id_a      ! dataset identifier
-integer(hid_t) :: dspace_id_a    ! dataspace identifier
-
-
 
 integer(hsize_t), dimension(2) :: dims ! dataset dimensions
 
@@ -51,24 +37,23 @@ integer     ::   error ! error flag
 
 !read in arguments (g,beta,mu,n,endt)
 call getarg(1,buffer)
-read(buffer,*) kappa !nn-coupling
+read(buffer,*) kappa
 
 call getarg(2,buffer)
-read(buffer,*) beta !1/T
+read(buffer,*) beta
 
 write(*,*) 1.0/beta
 call getarg(3,buffer)
-read(buffer,*) mu !strength of electric field
+read(buffer,*) mu
 
 call getarg(4,buffer)
-read(buffer,*) n !size of grid
+read(buffer,*) n
 
 call getarg(5,buffer)
-read(buffer,*) endt !number of iterations
+read(buffer,*) endt
 
 call getarg(6,buffer)
-read(buffer,*) seedn !random seed
-
+read(buffer,*) seedn
 
 call random_seed(seedsize)
 allocate(seed(seedsize))
@@ -86,26 +71,24 @@ zeroe = -1*kappa*4.0
 
 !calculate langenvin noise term (c_l in yurke)
 !lnoise=sqrt(24*1./beta*deltime)
-lnoise = sqrt(12.0*1.0/beta)
-!this calculates evenlly space logarythmic points
-!it is useful to have if you don't want all the points from the simulation,
-!as the events progress on a log time scale. This can save time if you are looking at defect coalenscenece.
+lnoise = sqrt(12*1/beta)
 do t=1,100
     dt = (log10(real(endt/deltime))/100)
     tpoints(t) =  int(10**(t*dt))
 enddo
 logtpoints= tpoints(unique(tpoints))
+!write(*,*) logtpoints
 
 
-!!initial random/zero grid
-
+!initial random grid
+!write(*,*) 'initialize grid'
 allocate(grid(n,n))
-allocate(hgrid(n,n))
 allocate(gridplusdelta(n,n))
-allocate(agrid(n,n))
+!write(*,*) grid(n,n)
 
-!this part will create a random grid. However, because we are interested in seeing equilibrium,
-!we will instead just normalize this to zero.
+
+
+
 call random_seed(put=seed)
 do i=1,n
     do j=1,n
@@ -114,29 +97,27 @@ do i=1,n
         grid(i,j) = 0
     end do
 enddo
-
-!gridplusdelta is the grid that evolves in time
 gridplusdelta = grid
-hgrid = 0
 measuredt = 0
 do i=1,n
     do j=1,n
-        measuredt = (hamxy(i,j,grid(i,j),kappa,mu, 0d0))/n/n+measuredt
+        measuredt = (hamxy(i,j,grid(i,j),kappa,mu))/n/n+measuredt
     enddo
 enddo
 
-!the following code deals with the radius of an island.
-islandr = 0 ! the beginning island radius
-deltar = 1 !the beginning width of the island
-!deltar = 10 !deltar is the width of the permimeter of the circle
+!calculate the indices where the boundary exists. these indicies will meet the
+!equation i^2+j^2 = r^2, where r is the radius of the circle. we will take some 
+!delta, so (r-del)^2 .ge. i^2+j^2 .ge. (r)^2
+islandr =10
+deltar = 3
 
-!allocate mu vector (this is for the 
+!allocate mu vector
 allocate(muvector(int(endt/deltime)))
-muvector = 5.*kappa
+muvector = 11.*kappa
 !muvector(1:10)=0
 !muvector(int(endt/20/deltime):int(endt/deltime)) = (/ (mu+kappa*i/(endt/deltime-2)*100/2, i= 0,int((endt/deltime-1)/2)) /)
 !muvector(int(endt/20/deltime):int(endt/deltime)) = 10*kappa
-!write(*,*) muvector
+write(*,*) muvector
 
 
 
@@ -146,7 +127,6 @@ write(*,*) 'max t', measuredt-zeroe
 open(61,file='tvt.dat',status = 'unknown', position='append')
 open(66,file='radius.dat',status = 'unknown', position='append')
 open(67, file = 'datanames.dat', status = 'unknown', position = 'append')
-open(68, file = anchorName, status = 'unknown', position = 'append')
 
 !hdf handling 
 
@@ -160,8 +140,37 @@ dims = (/n,n/)
   ! create a new file using default properties.
   !
   call h5fcreate_f(filename, h5f_acc_trunc_f, file_id, error)
-  call h5fcreate_f(hamfilename, h5f_acc_trunc_f, file_id_h, error)
 
+  !
+  ! create the dataspace.
+  !
+!  call h5screate_simple_f(rank, dims, dspace_id, error)
+
+  !
+  ! create the dataset with default properties.
+  !
+!  call h5dcreate_f(file_id, dsetname, h5t_native_integer, dspace_id, &
+!       dset_id, error)
+
+  !
+  ! end access to the dataset and release resources used by it.
+  !
+!  call h5dclose_f(dset_id, error)
+
+  !
+  ! terminate access to the data space.
+  !
+!  call h5sclose_f(dspace_id, error)
+
+  !
+  ! close the file.
+  !
+!  call h5fclose_f(file_id, error)
+
+  !
+  ! close fortran interface.
+  !
+!  call h5close_f(error)
 
 
 !initialize defect grid
@@ -169,48 +178,26 @@ allocate(dgrid(n,n))
 dgrid=0
 endt = logtpoints(size(logtpoints))
 write(*,*) endt
-!this next section will write out the boundary condition for the island. This is mostly just for piece of mind, so folks
-!can visualize what the angular dependence of the anchoring condition is.
-call h5fcreate_f('anchor.h5', h5f_acc_trunc_f, file_id_a, error)
-do i=1,n
-    do j = 1, n
-        agrid(i,j) = anchor(i,j,20d0,3,n)
-        write(68,'(f10.5)',advance='no') anchor(i,j,20d0,3,n)
-    enddo
-
-            write(68,*)
-end do
-
-close(68)
-
-call h5screate_simple_f(rank, dims, dspace_id_a, error)
-call h5dcreate_f(file_id_a, 'anchor.dat', h5t_native_double, dspace_id_a, &
-       dset_id_a, error)
-
-call h5dwrite_f(dset_id_a, h5t_native_double, agrid, dims, error)
-call h5dclose_f(dset_id_a, error)
-call h5fclose_f(file_id_a, error)
-
-
+!write(*,*) 'begining langan processing...'
+!preform langan with euler update
 do t=1,int(endt)
 
     avedelphi = 0
     grid=gridplusdelta
-    if (( t .gt. 10 )) then
+    if (( t .gt. 50 )) then
         call islandradius(islandr,t)
     endif
-    call update(grid,gridplusdelta, hgrid,lnoise,n)
- 
+    call update(grid,gridplusdelta, lnoise,n)
     meank =.5*sum((grid-gridplusdelta)**2)/n/n/deltime**2
     write(filenames,'(a3,f0.4, a4)') 'out', t*deltime,'.dat'
     write(dfilenames,'(a6,f0.4, a4)') 'defect', t*deltime,'.dat'
+    write(67,*) filenames
 
     if (logspace(t) .eq. 1) then
         print *, trim(filenames)
     end if
     if (1 .eq. 1) then !this is not log time, so we need all time steps
-       write(66,*) islandr, 1.0*real(t)/endt
-       write(67,*) filenames
+        write(66,*) islandr
        !print *, trim(filenames)
 
 !        open(1,file=filenames)
@@ -223,7 +210,6 @@ do t=1,int(endt)
   ! create the dataspace.
   !
   call h5screate_simple_f(rank, dims, dspace_id, error)
-  call h5screate_simple_f(rank, dims, dspace_id_h, error)
 
   !
   ! create the dataset with default properties.
@@ -231,23 +217,17 @@ do t=1,int(endt)
   call h5dcreate_f(file_id, filenames, h5t_native_double, dspace_id, &
        dset_id, error)
 
-
-  call h5dcreate_f(file_id_h, filenames, h5t_native_double, dspace_id_h, &
-       dset_id_h, error)
   ! write the data
   call h5dwrite_f(dset_id, h5t_native_double, grid, dims, error)
-  call h5dwrite_f(dset_id_h, h5t_native_double, hgrid, dims, error)
   !
   ! end access to the dataset and release resources used by it.
   !
   call h5dclose_f(dset_id, error)
-  call h5dclose_f(dset_id_h, error)
 
   !
   ! terminate access to the data space.
   !
   call h5sclose_f(dspace_id, error)
-  call h5sclose_f(dspace_id_h, error)
 
 
 !        do i=1,n
@@ -282,14 +262,12 @@ end do
 !write(*,*) dvar/dcount/2
 close(61)
 close(66)
-
 !write to file
 
   !
   ! close the file.
   !
   call h5fclose_f(file_id, error)
-  call h5fclose_f(file_id_h, error)
 
   !
   ! close fortran interface.
@@ -304,46 +282,16 @@ contains
 
     subroutine islandradius(islandr,t)
         !calculate the radius of the island at a given time
-        integer :: t, islandScheme
+        integer :: t
         real(8) :: islandr
+        ! case 2: grow, hit 50 and then shrink
+        if (1.0*t/endt .lt. .5) then
+            islandr = islandr + 50./(endt/2-1)
+        else
+            islandr = islandr - 50./(endt/2-1)
 
-        !first, assign how you want this function to be called
-        islandScheme = 2
-        ! case 2: create island out of nothing at .2 percent
-        select case (islandScheme)
-        !=================Default=======================
-        ! create an island and let it sit
-        case DEFAULT
-            if ( (t .ge. 100) ) then
-                islandr = 20 !this will put the line in the middle of the simulation
-            else
-                islandr = 0
-            end if
-
-
-
-        !==================Case 1==========================
-        ! creating an island out of nowhere and disappearing it
-        case (1)
-            if ( (t .ge. 100) .and. (t .le. 400 ) ) then
-                islandr = 20 !this will put the line in the middle of the simulation
-            else
-                islandr = 0
-            end if
-
-        !=================Case 2 ===========================
-        !grow an island from nothing, then shrink it
-        case (2) 
-            if (1.0*t/endt .lt. .3) then
-                islandr = islandr + 30./(endt/3)
-            else if ( (1.0*t/endt .ge. .3) .and. (1.0*t/endt .le. .6) ) then
-                islandr = islandr - 200./(endt/3)
-            else
-                islandr = -20
-
-            end if
-        end select
-
+        end if
+        islandr = 10
     end subroutine islandradius
 
     function logspace(t)
@@ -364,8 +312,7 @@ contains
         !write(*,*) 'hamxy', i,j
         x =(/ grid(modulo(i-2,n)+1,j),theta,grid(modulo(i,n)+1,j)/)
         y =(/ grid(i,modulo(j-2,n)+1),theta,grid(i,modulo(j,n)+1)/)
-        torque = kappa*(sin(x(2)-x(1))+sin(x(2)-x(3))+sin(y(2)-y(1))+sin(y(2)-y(3)))+4*mu*cos( (theta-fieldphi))* &
-            sin((theta-fieldphi) ) 
+        torque = kappa*(sin(x(2)-x(1))+sin(x(2)-x(3))+sin(y(2)-y(1))+sin(y(2)-y(3)))-mu*sin( (theta-fieldphi) )
     end function torque
 
     function xi(grid,beta,n)
@@ -375,62 +322,46 @@ contains
         xi = sum(grid**2)/n**2
     end function xi
 
-    function hamxy(i,j,theta,kappa,mu,fieldphi)
+    function hamxy(i,j,theta,kappa,mu)
         integer :: i,j,ii,jj
-        real(8):: theta, fieldphi
+        real(8):: theta
         real(8) :: kappa,hamxy,mu
         real(8), dimension(3) :: x,y
         !write(*,*) 'hamxy', i,j
         x =(/ grid(modulo(i-2,n)+1,j),theta,grid(modulo(i,n)+1,j)/)
         y =(/ grid(i,modulo(j-2,n)+1),theta,grid(i,modulo(j,n)+1)/)
-        hamxy = -kappa*(cos(x(2)-x(1))+cos(x(2)-x(3))+cos(y(2)-y(1))+cos(y(2)-y(3)))-mu*cos( (theta-fieldphi) )
+        hamxy = -kappa*(cos(x(2)-x(1))+cos(x(2)-x(3))+cos(y(2)-y(1))+cos(y(2)-y(3)))-mu*cos( (theta-45/2/pi) )
     end function hamxy
-    
-   function anchor(ii,jj,ir,dr,n)
-      integer :: n, ii, jj, dr
-     real(8) :: anchor,ir
-     write(*,*) ii,jj, ir, dr, n
-    if ( (sqrt(real((ii-n/2)**2 + (jj-n/2)**2)) .lt. ir) .and. &
-                    (sqrt(real((ii-n/2)**2+(jj-n/2)**2)) .gt. (ir-dr))) then
-
-                    anchor = atan2(real(jj-n/2),real(ii-n/2))+pi/2
-                else
-                    anchor = 0.d8
-                endif
-
-        end function anchor
 
 
-    subroutine update(state,newstate,hgrid,lnoise,n)
+    subroutine update(state,newstate,lnoise,n)
         real(8) :: theta, thetap,x,dele,e1,e2,lnoise,fluce,u,force,fieldphi,mutemp
         integer :: n,ii,jj,i,j
-        real(8), dimension(n,n) :: state,newstate,hgrid
+        real(8), dimension(n,n) :: state,newstate
         do i=1,n
             do j=1,n
                 call random_number(x)
-                ii = 1+floor((n)*x) !this will give periodic boundaries
+                ii = 1+floor((n)*x)
                 call random_number(x)
                 jj = 1+floor((n)*x)
-                !see if we are within the line boundary
-                 if ( (sqrt(real((ii-n/2)**2 + (jj-n/2)**2)) .lt. (islandr+real(deltar)/2.) ) .and. &
-                    (sqrt(real((ii-n/2)**2+(jj-n/2)**2)) .gt. (islandr-real(deltar)/2.))) then
-
-                    mutemp = muvector(t) !using global variable laser_noise
+                !see if we are on the boundary
+                if ( (sqrt(real((ii-n/2)**2 + (jj-n/2)**2)) .lt. islandr) .and. &
+                    (sqrt(real((ii-n/2)**2+(jj-n/2)**2)) .gt. (islandr-deltar))) then
+                    mutemp = muvector(t)
                     fieldphi = atan2(real(jj-n/2),real(ii-n/2))+pi/2
+                   ! write(*,*) ii,jj, fieldphi, mutemp 
                 else
                     mutemp = mu
-                    fieldphi = 0
                 endif
+
 
                 theta = grid(ii,jj)
                 force = torque(ii,jj,theta,kappa,mutemp,fieldphi)
                 call random_number(fluce)
                 fluce = fluce-.5
                 newstate(ii,jj)=theta-deltime*(fluce*lnoise+force)
-                hgrid(ii,jj) = hamxy(ii, jj, newstate(ii,jj), kappa, mu, fieldphi)+4*kappa !this will normalize so zero is actually the
-        !energy
                 avedelphi = avedelphi + deltime*fluce*lnoise
-                dvar = dvar+(fluce*lnoise)**2
+                dvar = dvar+(fluce*lnoise)**3
                 dcount = dcount+1
             end do
         end do
@@ -498,4 +429,4 @@ function remove_dups(input)
      end do
      unique=pack([(kx,kx=1,100)],mask)
     end function unique
-end program islandC_np
+end program langan
