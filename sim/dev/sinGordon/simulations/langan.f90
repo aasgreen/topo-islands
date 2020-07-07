@@ -34,7 +34,7 @@ module langan
         initScheme = 1
 
         select case (initScheme)
-        case DEFAULT
+        case (0)
             !===================================
             ! create a grid of spins all pointing to the right
 
@@ -132,7 +132,7 @@ module langan
         x =(/ grid(modulo(i-2,n)+1,j),grid(i,j),grid(modulo(i,n)+1,j)/)
         y =(/ grid(i,modulo(j-2,n)+1),grid(i,j),grid(i,modulo(j,n)+1)/)
         torque = kappa/8*(sin(x(2)-x(1))+sin(x(2)-x(3))+sin(y(2)-y(1))+& 
-            sin(y(2)-y(3)))+4*mu*cos( (grid(i,j)-fieldphi))* &
+            sin(y(2)-y(3))) +4*mu*cos( (grid(i,j)-fieldphi))* &
             sin((grid(i,j)-fieldphi) ) 
     end function torque
 
@@ -164,6 +164,11 @@ module langan
             sin((grid(i,j)-fieldphi) )
     end function torqueLandau
 
+    function random_test()
+        real(8) random_test
+        call random_number(random_test)
+    end function random_test
+        
 
     function kinetic(i,j,grid,n,kappa)
         integer :: i,j,n
@@ -189,7 +194,7 @@ module langan
         !write(*,*) 'hamxy', i,j
         x =(/ grid(modulo(i-2,n)+1,j),grid(i,j),grid(modulo(i,n)+1,j)/)
         y =(/ grid(i,modulo(j-2,n)+1),grid(i,j),grid(i,modulo(j,n)+1)/)
-        hamxy = -kappa*(cos(x(2)-x(1))+cos(x(2)-x(3))+cos(y(2)-y(1))+cos(y(2)-y(3)))-mu*cos( (grid(i,j)-fieldphi) )
+        hamxy = -kappa*(cos(x(2)-x(1))+cos(x(2)-x(3))+cos(y(2)-y(1))+cos(y(2)-y(3))) - mu*cos( (grid(i,j)-fieldphi) )**2
     end function hamxy
      
    function anchor(ii,jj,ir,dr,n)
@@ -207,6 +212,24 @@ module langan
                 endif
 
         end function anchor
+    subroutine init_random_seed()
+        !initialize the random seed generator for fortran (only works on linux, calls /dev/urandom for random stream)
+        integer :: seedsize, istat=0, un=4
+        integer, allocatable :: seed(:)
+        call random_seed(seedsize)
+        allocate(seed(seedsize))
+
+
+        open(newunit=un, file="/dev/urandom", access="stream", &
+            form="unformatted", action="read", status="old", iostat=istat)
+        if (istat == 0) then
+            read(un) seed
+            close(un)
+        endif
+
+        call random_seed(put=seed)
+        deallocate(seed)
+    end subroutine init_random_seed
 
 
 
@@ -217,27 +240,33 @@ module langan
 
         intent(in) :: state, n, lnoise, kappa, mu
         intent(out) newstate, hgrid
+        newstate = state
 
         do i=1,n
             do j=1,n
                 call random_number(x)
-                ii = 1+floor((n)*x) !this will give periodic boundaries
+                ii = 1 + floor((n)*x) !this will give periodic boundaries
                 call random_number(x)
-                jj = 1+floor((n)*x)
+                jj = 1 + floor((n)*x)
                 !see if we are within the line boundary
                 mutemp = mu
                 fieldphi = 0
 
                 theta = state(ii,jj)
-                force = torqueLandau(ii,jj,state, n ,kappa,mutemp,fieldphi)
+                force = torque(ii,jj,state, n ,kappa,mutemp,fieldphi)
+                force = torque(i,j,state, n ,kappa,mutemp,fieldphi)
                 call random_number(fluce)
-                fluce = fluce-.5
-                newstate(ii,jj)=theta-deltime*(fluce*lnoise+force)
-                hgrid(ii,jj) = hamxy(ii, jj, newstate, n , kappa, mu, fieldphi)+4*kappa !this will normalize so zero is actually the
+                fluce = fluce - .5
+                !newstate(ii,jj)=theta-deltime*(fluce*lnoise+force)
+                newstate(i,j)=state(i,j)-deltime*force
+
+                !newstate(ii,jj) = state(ii,jj) - .001
+                hgrid(i,j) = hamxy(i, j, newstate, n , kappa, mu, fieldphi) !this will normalize so zero is actually the
+
         !energy
                 avedelphi = avedelphi + deltime*fluce*lnoise
-                dvar = dvar+(fluce*lnoise)**2
-                dcount = dcount+1
+                dvar = dvar + (fluce*lnoise)**2
+                dcount = dcount + 1
             end do
         end do
     end subroutine update

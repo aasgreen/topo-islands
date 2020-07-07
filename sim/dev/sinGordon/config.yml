@@ -1,0 +1,103 @@
+
+
+macro: no #set yes if this config is a list of config files to be run
+
+meta: #which modules you would like to run
+  runName: valTest
+  runSimulation: no #yes
+  extractSmartNoise: no #yes
+  enhanceImages: no #yes
+  trainModel: yes
+  saveModel: yes
+  runModel: yes
+  correctImages: yes #corrects images before running model on them
+  validate: yes
+  saveRun: yes #saves the generated model and validation results file.
+
+paths: 
+  simRunner: simulations/randomDefects/runSim.py
+  simFunc: runSim #this is the method that will be called on the simRunner file
+  fileConvert: ImageAnnotation
+  noiseExtractor: smartNoise
+  noiseSamples: smartNoise/noiseSamples #images to extract fourier noise from
+  noiseFiles: smartNoise/noiseSamples/noiseFiles #location where fourier noise files is stored
+  simImagesPath: simulations/randomDefects/accumulated #path to a folder containing simulation images
+  artifactPath: artifacts #path to the folder containing addArtifacts.py. For enhancing simulated training images.
+  darkflow: darkflow
+  imageCorrection: smartNoise
+  validation: mAP #path to mAP folder
+
+simulation:
+  images: 100
+  numDefects: 20 #number of defects per image
+  minDefects: 10
+  maxDefects: 50
+  xDim: 250
+  yDim: 200
+  decrossMax: 50
+  decrossMin: 50
+
+smartNoise:
+  crop: yes #enables image cropping to only use noise from a portion of an image
+  cropManual: no #if yes, will allow you to manually select a crop box
+  cropX: [200,600] #sets the x crop limits if cropManual is no
+  cropY: [200,600] #sets the x crop limits if cropManual is no
+  standardize: yes #standardizes the noise intensity. Recommended, as the noise files are very dim otherwise.
+
+artifacts: #options for changing how simulation images are enhanced
+  imgMeanMax: 0.7
+  imgMeanMin: 0.3
+  imgStdMax: 24
+  imgStdMin: 1
+  gaussianMin: 0 #in units of sigma
+  gaussianMax: 1.5
+  smartNoise: yes #yes if you wish to add smart noise extracted from real images
+  smartNoiseMin: 0.3
+  smartNoiseMax: 2.5
+  numCircles: 3 #overlays circles of random brightness on images. 0 to not add in circles
+  addGrid: yes #splits images into four random quadrants, which each have their brightness randomly changed
+  gridRange: 0.5 # range over which a quadrant can be brightened or dimmed
+
+
+darkflow: #make paths absolute or relative to main darkflow folder
+  training_annotations: ../simulations/randomDefects/accumulated/out
+  training_images: ../simulations/randomDefects/accumulated/outMess
+  run_directory: ../../data/collated/annotations/corrected
+  genMarkedImages: yes
+  saveAll: yes 
+  saveNum: 10 # save all is no, this is the number of images to be saved
+  image_ext: tif
+
+  runTrained: no #runs the model that was just trained.
+  meta_file: bin/defectT.meta #runs pretrained model if runTrained is no
+  pb_file: bin/defectT.pb
+
+  mAPPath: ../mAp
+
+  threshold: 0
+  learning_rate: 1e-5
+  model: cfg/yolo_custom2.cfg
+  batch_size: 8
+  epoch: 40
+
+  starting_weights: bin/yolo.weights
+  gpu_usage: 1
+  labels_file: one_label.txt
+  json: True
+
+validation:
+  validation_detection_path: ../data/collated/annotations/corrected/outIMG
+  validation_truth_path: ../data/collated/annotations/csv/out
+
+
+imageCorrection:
+  imgFolder: ../data/collated/annotations
+  imgExt: tif
+  selectBox: no #select a box to base correction on
+  autoBox: yes # if select box is no, use the below coordinates as a crop box
+  cropX: [348,811] #sets the x crop limits if cropManual is no
+  cropY: [130,603] #sets the x crop limits if cropManual is no
+
+
+standard:
+  stds: 6
