@@ -109,7 +109,7 @@ module langan
     end subroutine islandradius
 
 
-    function torque(i,j,grid,n,kappa,mu,fieldphi)
+    function torque(i,j,grid,n,kappa,mu,fieldphi,alpha)
         !calculate the torque for each grid position
        ! Args: 
         !   i: row co-ordinate
@@ -121,7 +121,8 @@ module langan
 
  !      Returns:
  !          the force (torque) on the spin at site i,j
-        integer :: i,j,n
+        integer :: i,j,n, torqueScheme=1
+        real(8), intent(in), optional :: alpha
         real(8):: torque,kappa,fieldphi
         real(8) :: mu
         real(8), dimension(3) :: x,y
@@ -131,9 +132,19 @@ module langan
 
         x =(/ grid(modulo(i-2,n)+1,j),grid(i,j),grid(modulo(i,n)+1,j)/)
         y =(/ grid(i,modulo(j-2,n)+1),grid(i,j),grid(i,modulo(j,n)+1)/)
-        torque = kappa/8*(sin(x(2)-x(1))+sin(x(2)-x(3))+sin(y(2)-y(1))+& 
-            sin(y(2)-y(3))) +4*mu*cos( (grid(i,j)-fieldphi))* &
-            sin((grid(i,j)-fieldphi) ) 
+
+        select case (torqueScheme)
+            case (0) 
+                torque = kappa/8*(sin(x(2)-x(1))+sin(x(2)-x(3))+sin(y(2)-y(1))+& 
+                sin(y(2)-y(3))) +4*mu*cos( (grid(i,j)-fieldphi))* &
+                sin((grid(i,j)-fieldphi) ) 
+
+            case (1)
+                energy = kinetic(i,j,grid,n,kappa)
+                torque = kappa/8*(1-alpha*energy/kappa)*(sin(x(2)-x(1))+ &
+            sin(x(2)-x(3))+sin(y(2)-y(1))+sin(y(2)-y(3)))+4*mu*cos( (grid(i,j)-fieldphi))* &
+            sin((grid(i,j)-fieldphi) )
+    end select
     end function torque
 
     function torqueLandau(i,j,grid,n,kappa,mu,fieldphi)
@@ -180,7 +191,8 @@ module langan
         !write(*,*) 'hamxy', i,j
         x =(/ grid(modulo(i-2,n)+1,j),grid(i,j),grid(modulo(i,n)+1,j)/)
         y =(/ grid(i,modulo(j-2,n)+1),grid(i,j),grid(i,modulo(j,n)+1)/)
-        kinetic = -kappa/8*(-4+(cos(x(2)-x(1))+cos(x(2)-x(3))+cos(y(2)-y(1))+cos(y(2)-y(3)))) !shift so energy =0 is min.
+        kinetic = -kappa/8*(-4+(cos(x(2)-x(1))+cos(x(2)-x(3))+cos(y(2)-y(1))+cos(y(2)-y(3)))) !shift so energy is bounded
+        !(0,kappa).
     end function kinetic
      
     function hamxy(i,j,grid,n,kappa,mu,fieldphi)
@@ -233,9 +245,10 @@ module langan
 
 
 
-    subroutine update(state,newstate,hgrid,lnoise,kappa, mu, n)
+    subroutine update(state,newstate,hgrid,lnoise,kappa, mu, n,alpha)
         real(8) :: theta, x,lnoise,fluce,force,fieldphi,mutemp, kappa, mu
         integer :: n,ii,jj,i,j
+        real(8), intent(in), optional :: alpha
         real(8), dimension(n,n) :: state,newstate,hgrid
 
         intent(in) :: state, n, lnoise, kappa, mu
@@ -253,12 +266,12 @@ module langan
                 fieldphi = 0
 
                 theta = state(ii,jj)
-                force = torque(ii,jj,state, n ,kappa,mutemp,fieldphi)
-                force = torque(i,j,state, n ,kappa,mutemp,fieldphi)
+                force = torque(ii,jj,state, n ,kappa,mutemp,fieldphi,alpha)
+                force = torque(i,j,state, n ,kappa,mutemp,fieldphi,alpha)
                 call random_number(fluce)
                 fluce = fluce - .5
                 !newstate(ii,jj)=theta-deltime*(fluce*lnoise+force)
-                newstate(i,j)=state(i,j)-deltime*force
+                newstate(i,j)=state(i,j)-deltime*force-deltime*fluce*lnoise
 
                 !newstate(ii,jj) = state(ii,jj) - .001
                 hgrid(i,j) = hamxy(i, j, newstate, n , kappa, mu, fieldphi) !this will normalize so zero is actually the
